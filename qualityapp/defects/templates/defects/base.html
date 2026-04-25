@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <title>
+        {% block title %}
+        {% endblock %}
+    </title>
+    <style>
+        header > div {
+            display: flex;
+        	justify-content: space-between;
+			align-items: center;
+		}
+
+        .fixed-container {
+		    height: 100%;
+			margin-left: 40px;
+			margin-right: 40px;
+		}
+
+		.fixed-container > h1 {
+			margin-bottom: 5px;
+			font-size:  xxx-large;
+		}
+
+		.fixed-container > h2 {
+			font-size:  xx-large;
+		}
+
+		.fixed-container > p {
+			margin-bottom: 40px;
+		}
+
+   		a {
+			color: black;
+			text-decoration: none;
+		}
+
+        a:hover {
+			text-decoration: underline;
+		}
+
+		button {
+			padding: 10px 30px;
+			cursor: pointer;
+			border-radius: 5px;
+		}
+
+        .light-button {
+			border: 1px solid black;
+			background-color: transparent;
+		}
+
+</style>
+
+</head>
+<body>
+    {% block body %}
+    {% endblock %}
+</body>
+</html>

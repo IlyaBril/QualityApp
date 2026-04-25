@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>  Defects  </title>
+
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .logout { background: red; color: white; padding: 10px; border: none; cursor: pointer; }
+    </style>
+</head>
+
+<body>
+    <h2>Дефекты</h2>
+
+    <div id="loading">Загрузка...</div>
+    <table id="defectsTable" style="display:none;">
+        <thead>
+            <tr><th>ID</th><th>Название</th><th>Статус</th><th>Приоритет</th><th>Дата</th></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+    <script>
+        // Получить токен
+        function getToken() {
+            return localStorage.getItem('access_token');
+
+        }
+
+        // Обновить токен
+        async function refreshToken() {
+            const refresh = localStorage.getItem('refresh_token');
+            const response = await fetch('/api/token/refresh/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({refresh_token: refresh})
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('access', data.access);
+                return data.access;
+            } else {
+                window.location.href = '/login/';
+            }
+        }
+
+        // Запрос с автообновлением токена
+        async function fetchWithAuth(url) {
+            const token = getToken();
+            console.log('Token exists:', token);
+            let response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                    }
+            });
+
+            if (response.status === 401) {
+                const newToken = await refreshToken();
+                response = await fetch(url, {
+                    headers: {'Authorization': 'Bearer ' + newToken}
+                });
+            }
+
+            return response;
+        }
+
+        // Загрузить дефекты -> заменить на Gridjs ?
+        async function loadDefects() {
+            const response = await fetchWithAuth('/api/defects/table/');
+            const data = await response.json();
+
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            data.forEach(defect => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = defect.id;
+                row.insertCell(1).textContent = defect.title;
+                row.insertCell(2).textContent = defect.status;
+            });
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('defectsTable').style.display = 'table';
+        }
+
+        // Выход для будующих страниц
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login/';
+        }
+
+        // Загрузить при открытии
+        loadDefects();
+    </script>
+
+</body>
+</html>
