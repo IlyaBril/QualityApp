@@ -5,27 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="07191034-5a59-4112-abc4-8084ead5ea0a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/QualityApp.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/authentication/base.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/authentication/login.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/defects/defects_table.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/.env" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/authentication/authentication.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/authentication/serializers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/authentication/services/redis_service.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/authentication/urls.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/defects/serializers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/defects/tables.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/defects/templates/defects/base.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/defects/templates/defects/defects_table.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/defects/urls.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qualityapp/qualityapp/middleware.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,7 +35,6 @@
   "keyToString": {
     "DefaultHtmlFileTemplate": "HTML File",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
     "last_opened_file_path": "/home/ilya/Projects/QualityApp/frontend/authentication"
   }
 }]]></component>

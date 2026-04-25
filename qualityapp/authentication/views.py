@@ -1,9 +1,3 @@
-from django.urls import reverse, reverse_lazy
-
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.views import View
 from django.conf import settings
 
 from rest_framework import status, generics
@@ -50,16 +44,13 @@ class LoginView(APIView):
     """
     permission_classes = [AllowAny]
     def post(self,request):
-        print('dfdf', request.data)
         serializer = LoginSerializer(data=request.data)
-        print('dfdf', serializer.is_valid())
         if serializer.is_valid():
             user = serializer.validated_data['user']
 
             # Generate token
             refresh = RefreshToken.for_user(user)
             access_token = refresh.access_token
-            print('LoginView token ', access_token)
 
             # Add tokens to whitelist
             refresh_jti = refresh['jti']
@@ -156,7 +147,7 @@ class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        refresh_token = request.data.get['refresh']
+        refresh_token = request.data.get('refresh')
 
         if not refresh_token:
             return Response({'error': 'Refresh token required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -169,6 +160,7 @@ class TokenRefreshView(APIView):
                 return Response({'error': 'Refresh token is blacklisted'}, status=status.HTTP_401_UNAUTHORIZED)
 
             # Check if whitelisted (if enabled)
+
             if settings.WHITELIST_ENABLED and not redis_token_service.is_whitelisted(refresh['jti']):
                 return Response({'error': 'Token not authorized'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -210,19 +202,3 @@ class TokenVerifyView(APIView):
         }
 
         return Response(token_data, status=status.HTTP_200_OK)
-
-
-
-
-
-def logout_view(request: HttpRequest):
-    logout(request)
-    return redirect(reverse("authentication:login"))
-
-
-class MyLogoutView(View):
-    def get(self, request):
-        logout(request)
-        return redirect('authentication:login')
-
-
