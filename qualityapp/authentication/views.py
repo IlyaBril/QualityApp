@@ -1,14 +1,15 @@
-from django.conf import settings
+import logging
+from datetime import datetime
 
+from django.conf import settings
+from django.contrib.auth.models import User
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import User
-from datetime import datetime
-import logging
 
+from .services.fingerprint import generate_device_fingerprint
 from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer
 from .services.redis_service import redis_token_service
 
@@ -43,6 +44,7 @@ class LoginView(APIView):
     User login endpoint - issues JWT tokens and ads to whitelist
     """
     permission_classes = [AllowAny]
+
     def post(self,request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -65,11 +67,19 @@ class LoginView(APIView):
             # Add access token to whitelist
             access_jti = access_token['jti']
             access_exp = datetime.fromtimestamp(access_token['exp'])
+
             redis_token_service.add_to_whitelist(
                 access_jti,
                 user.id,
                 access_exp,
                 {'token_type': 'access'}
+            )
+
+            device_fingerprint = generate_device_fingerprint(request)
+            redis_token_service.add_token_metadata(
+                access_jti,
+                'device_fingerprint',
+                device_fingerprint
             )
 
             return Response({
@@ -156,13 +166,14 @@ class TokenRefreshView(APIView):
             refresh = RefreshToken(refresh_token)
 
             # Check if refresh token is blacklisted
-            if redis_token_service.is_blacklisted:
+            if redis_token_service.is_blacklisted():
                 return Response({'error': 'Refresh token is blacklisted'}, status=status.HTTP_401_UNAUTHORIZED)
 
-            # Check if whitelisted (if enabled)
+            # Check if whitelisted
 
             if settings.WHITELIST_ENABLED and not redis_token_service.is_whitelisted(refresh['jti']):
                 return Response({'error': 'Token not authorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
 
             # Create new access token
             new_access_token = refresh.access_token
@@ -176,6 +187,8 @@ class TokenRefreshView(APIView):
                 access_exp,
                 {'token_type': 'access'}
             )
+
+
 
             return Response({
                 'access': str(new_access_token)
