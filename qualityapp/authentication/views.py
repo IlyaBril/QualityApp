@@ -3,13 +3,14 @@ from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .services.fingerprint import generate_device_fingerprint
+from .services.fingerprint import generate_device_fingerprint, get_client_ip
 from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer
 from .services.redis_service import redis_token_service
 
@@ -45,23 +46,38 @@ class LoginView(APIView):
     """
     permission_classes = [AllowAny]
 
-    def post(self,request):
+    def post(self, request):
         serializer = LoginSerializer(data=request.data)
+        logger.info(f"Logout data {request.data}")
         if serializer.is_valid():
             user = serializer.validated_data['user']
+
+            # Generate fingerprint
+            device_fingerprint = generate_device_fingerprint(request)
+            ip_address = get_client_ip(request)
+            user_agent = request.headers.get('User-Agent', '')
 
             # Generate token
             refresh = RefreshToken.for_user(user)
             access_token = refresh.access_token
 
-            # Add tokens to whitelist
+            # Prepare metadata
+            token_metadata = {
+                'token_type': 'access',
+                'device_fingerprint': device_fingerprint,
+                'ip_address': ip_address,
+                'user_agent': user_agent,
+                'login_time': datetime.now().isoformat(),
+            }
+
+            # Add tokens to whitelist with metadata
             refresh_jti = refresh['jti']
             refresh_exp = datetime.fromtimestamp(refresh['exp'])
             redis_token_service.add_to_whitelist(
                 refresh_jti,
                 user.id,
                 refresh_exp,
-                {'token_type': 'refresh'}
+                {'token_type': 'refresh', **token_metadata}
             )
 
             # Add access token to whitelist
@@ -72,14 +88,7 @@ class LoginView(APIView):
                 access_jti,
                 user.id,
                 access_exp,
-                {'token_type': 'access'}
-            )
-
-            device_fingerprint = generate_device_fingerprint(request)
-            redis_token_service.add_token_metadata(
-                access_jti,
-                'device_fingerprint',
-                device_fingerprint
+                token_metadata,
             )
 
             return Response({
@@ -101,6 +110,7 @@ class LogoutView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @csrf_exempt
     def post(self, request):
         serializer = LogoutSerializer(data=request.data)
 
@@ -120,7 +130,7 @@ class LogoutView(APIView):
                     access_jti = request.auth.get('jti')
                     if access_jti:
                         access_exp = datetime.fromtimestamp(request.auth.get('exp'))
-                        redis_token_service.add_to_blacklist(access_jti, request.user_id, access_exp)
+                        redis_token_service.add_to_blacklist(access_jti, request.user.id, access_exp)
                         redis_token_service.remove_from_whitelist(access_jti)
                 return Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
 
@@ -187,8 +197,6 @@ class TokenRefreshView(APIView):
                 access_exp,
                 {'token_type': 'access'}
             )
-
-
 
             return Response({
                 'access': str(new_access_token)

@@ -1,4 +1,5 @@
 from django.db import models
+from authentication.models import Departments
 
 # Create your models here.
 
@@ -12,7 +13,7 @@ class Defects(models.Model):
     ]
 
     title = models.CharField()
-    responsible_department = models.CharField(blank=True, null=True)
+    responsible_department = models.ForeignKey(Departments, null=True, on_delete=models.SET_NULL)
     responsible_line = models.CharField(blank=True, null=True)
     responsible_station = models.CharField(blank=True, null=True)
     responsible_person = models.CharField(blank=True, null=True)
@@ -26,6 +27,10 @@ class Defects(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        permissions = [
+            # Разрешение на просмотр дефектов своего отдела
+            ('can_view_department_defects', 'Может просматривать дефекты своего отдела'),
+        ]
 
     def __str__(self):
         return self.title

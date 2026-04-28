@@ -2,33 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <title>  Defects  </title>
 
     <style>
         body { font-family: Arial; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
         .logout { background: red; color: white; padding: 10px; border: none; cursor: pointer; }
+        .logout:disabled { opacity: 0.6; cursor: not-allowed; }
     </style>
 </head>
 
 <body>
-    <h2>Дефекты</h2>
+    <div style="display:flex; justify-content: space-between;">
+        <h2>Дефекты</h2>
+        <form id="logoutForm">
+            <button type="submit" class="btn" id="logoutBtn">Выйти</button>
+        </form>
+    </div>
 
     <div id="loading">Загрузка...</div>
-    <table id="defectsTable" style="display:none;">
+    <table id="defectsTable" style="display:none;" class="table table-striped">
         <thead>
-            <tr><th>ID</th><th>Название</th><th>Статус</th><th>Приоритет</th><th>Дата</th></tr>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Статус</th>
+                <th>Контрмеры</th>
+                <th>Дата</th>
+                <th>Департамент</th>
+            </tr>
         </thead>
         <tbody id="tableBody"></tbody>
     </table>
+
 
     <script>
         // Получить токен
         function getToken() {
             return localStorage.getItem('access_token');
-
         }
 
         // Обновить токен
@@ -37,12 +51,12 @@
             const response = await fetch('/api/token/refresh/', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({refresh_token: refresh})
+                body: JSON.stringify({refresh: refresh})
             });
 
             if (response.ok) {
                 const data = await response.json();
-                localStorage.setItem('access', data.access);
+                localStorage.setItem('access_token', data.access);
                 return data.access;
             } else {
                 window.location.href = '/login/';
@@ -82,17 +96,53 @@
                 row.insertCell(0).textContent = defect.id;
                 row.insertCell(1).textContent = defect.title;
                 row.insertCell(2).textContent = defect.status;
+                row.insertCell(3).textContent = defect.countermeasure;
+                row.insertCell(4).textContent = defect.created_at;
+                row.insertCell(5).textContent = defect.responsible_department;
             });
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('defectsTable').style.display = 'table';
         }
 
-        // Выход для будующих страниц
-        function logout() {
+        // Выход из системы (обновленная версия)
+        async function logout() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            const refresh = localStorage.getItem('refresh_token');
+            const access = localStorage.getItem('access_token');
+
+            // Отключаем кнопку
+            logoutBtn.disabled = true;
+            logoutBtn.textContent = 'Выход...';
+
+            try {
+                // Пробуем отправить запрос на сервер
+                if (refresh) {
+                    await fetch('/api/auth/logout/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${access}`
+                        },
+                        body: JSON.stringify({refresh: refresh})
+                    });
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+
+            // Очищаем localStorage в любом случае
             localStorage.clear();
+
+            // Перенаправляем на страницу входа
             window.location.href = '/login/';
         }
+
+        // Назначаем обработчик на форму
+        document.getElementById('logoutForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            logout();
+        });
 
         // Загрузить при открытии
         loadDefects();

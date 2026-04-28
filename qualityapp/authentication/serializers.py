@@ -1,9 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
-from .services.redis_service import redis_token_service
-from datetime import datetime
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -34,9 +31,7 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        print('ser', data)
         user = authenticate(**data)
-        print('usr', user)
         if user and user.is_active:
             return {'user': user}
         raise serializers.ValidationError("Invalid credentials")

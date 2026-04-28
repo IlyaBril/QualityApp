@@ -1,35 +1,63 @@
-import hashlib
 import logging
-from django.core.cache import cache
+from .fingerprint import generate_device_fingerprint, get_client_ip
 
 logger = logging.getLogger(__name__)
 
 
 class TokenAnomalyDetector:
-    def __init__(self):
-        self.fingerprint_keys = ['ip', 'user_agent', 'device_id']
+    """
+    Service for detecting token theft and suspicious activity
+    """
 
-    def check_token_anomaly(self, request, user_id, token_jti):
-        # Создание отпечатка устройства
-        current_fingerprint = self.create_fingerprint(request)
+    def __init__(self, redis_service):
+        self.redis = redis_service
 
-        # Получение последнего отпечатка для этого токена
-        cache_key = f"token_fingerprint:{token_jti}"
-        stored_fingerprint = cache.get(cache_key)
+    def validate_token_context(self, jti: str, request) -> tuple:
+        """
+        Validate if current request context matches stored token metadata
+        Returns: (is_valid, anomaly_reason)
+        """
+        # Get stored metadata from whitelist
+        stored_fingerprint = self.redis.get_token_metadata(jti, 'device_fingerprint')
+        stored_ip = self.redis.get_token_metadata(jti, 'ip_address')
+        stored_ua = self.redis.get_token_metadata(jti, 'user_agent')
 
-        if stored_fingerprint and stored_fingerprint != current_fingerprint:
-            # Отправка оповещения
-            self.alert_token_theft(user_id, token_jti, stored_fingerprint, current_fingerprint)
-            return True  # Обнаружена аномалия
+        # Если метаданных нет - токен старый, пропускаем (или обновляем)
+        if not stored_fingerprint:
+            logger.warning(f"No metadata found for token {jti[:8]}, skipping validation")
+            return True, None
 
-        cache.set(cache_key, current_fingerprint, timeout=3600)
-        return False
+        current_fingerprint = generate_device_fingerprint(request)
+        current_ip = get_client_ip(request)
+        current_ua = request.headers.get('User-Agent', '')
 
-    def create_fingerprint(self, request):
-        data = f"{request.META.get('REMOTE_ADDR')}|{request.META.get('HTTP_USER_AGENT')}"
-        return hashlib.sha256(data.encode()).hexdigest()
+        anomalies = []
 
-    def alert_token_theft(self, user_id, token_jti, old_fp, new_fp):
-        # Реализация оповещения администратора и пользователя
-        # Пример: отправка email, WebSocket уведомление, запись в alert лог
-        logger.critical(f"TOKEN THEFT DETECTED! User {user_id}, Token {token_jti}")
+        # Check fingerprint (most reliable)
+        if stored_fingerprint != current_fingerprint:
+            anomalies.append('device_fingerprint_mismatch')
+            logger.warning(f"Fingerprint mismatch for token {jti[:8]}")
+
+        # Check IP (supplementary)
+        if stored_ip and stored_ip != current_ip:
+            anomalies.append('ip_address_changed')
+            logger.warning(f"IP changed for token {jti[:8]}: {stored_ip} -> {current_ip}")
+
+        # Check User-Agent (supplementary)
+        if stored_ua and stored_ua != current_ua:
+            anomalies.append('user_agent_changed')
+            logger.warning(f"User-Agent changed for token {jti[:8]}")
+
+        if anomalies:
+            return False, anomalies
+
+        return True, None
+
+# Singleton instance
+anomaly_detector = None
+
+def get_anomaly_detection_service(redis_service):
+    global anomaly_detector
+    if anomaly_detector is None:
+        anomaly_detector = TokenAnomalyDetector(redis_service)
+    return anomaly_detector

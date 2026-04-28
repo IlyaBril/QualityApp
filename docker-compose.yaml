@@ -1,0 +1,25 @@
+version: "1.9"
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  quality_app:
+    build: .
+    command: python qualityapp/manage.py runserver 0.0.0.0:8000
+    #- gunicorn
+    #- megano_backend.wsgi:application
+    #- --bind
+    #- "0.0.0.0:8000"
+    volumes:
+    - .:/app/
+    ports:
+    - "8000:8000"
+    env_file:
+      - qualityapp/.env.dev
+
+volumes:
+  redis-data:

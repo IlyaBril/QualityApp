@@ -1,30 +1,31 @@
 import hashlib
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
-def generate_device_fingerprint(request):
+
+def generate_device_fingerprint(request) -> str:
     """
-    Генерирует уникальный fingerprint устройства на основе данных запроса.
+    Generate secure device fingerprint from request data
     """
-    # 1. Получаем IP-адрес клиента
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+
+    fingerprint_data = {
+        'ip': get_client_ip(request),
+        'user_agent': request.headers.get('User-Agent', ''),
+        'accept_language': request.headers.get('Accept-Language', ''),
+        'accept_encoding': request.headers.get('Accept-Encoding', ''),
+        'sec_ch_ua': request.headers.get('Sec-CH-UA', ''),
+        'sec_ch_ua_platform': request.headers.get('Sec-CH-UA-Platform', ''),
+    }
+
+    fingerprint_str = json.dumps(fingerprint_data, sort_keys=True)
+    return hashlib.sha256(fingerprint_str.encode()).hexdigest()
+
+
+def get_client_ip(request) -> str:
+    """Extract client IP from request"""
+    x_forwarded_for = request.headers.get('X-Forwarded-For')
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-
-    # 2. Получаем User-Agent (информация о браузере и ОС)
-    user_agent = request.META.get('HTTP_USER_AGENT', '')
-
-    # 3. (Опционально, но настоятельно рекомендуется) Пробуем получить Accept-Language
-    accept_language = request.META.get('HTTP_ACCEPT_LANGUAGE', '')
-
-    # Собираем все в одну строку
-    fingerprint_data = f"{ip}|{user_agent}|{accept_language}"
-
-    # Создаем хеш (SHA256) для получения компактного и безопасного идентификатора
-    fingerprint_hash = hashlib.sha256(fingerprint_data.encode('utf-8')).hexdigest()
-
-    logger.debug(f"Generated fingerprint for IP {ip}: {fingerprint_hash[:8]}...")
-    return fingerprint_hash
+        return x_forwarded_for.split(',')[0]
+    return request.META.get('REMOTE_ADDR', '')
